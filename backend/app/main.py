@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, status
@@ -7,9 +8,21 @@ from backend.app.schemas import SessionCreate, SessionRecord, Settings
 from backend.app.store import PomodoroStore
 
 
+def default_db_path() -> Path:
+    configured_path = os.getenv("DATABASE_PATH")
+    if configured_path:
+        return Path(configured_path)
+
+    if os.getenv("VERCEL"):
+        # Vercel functions can only write to /tmp, and that storage is ephemeral.
+        return Path("/tmp/pomodoro.db")
+
+    return Path("backend/data/pomodoro.db")
+
+
 def create_app(db_path: Path | None = None) -> FastAPI:
     app = FastAPI(title="Pomodoro MCP Demo")
-    store = PomodoroStore(db_path or Path("backend/data/pomodoro.db"))
+    store = PomodoroStore(db_path or default_db_path())
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
